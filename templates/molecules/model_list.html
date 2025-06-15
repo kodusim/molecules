@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+
+{% block title %}모델 목록 - 화학물질 반감기 예측 시스템{% endblock %}
+
+{% block extra_css %}
+<style>
+    .feature-importance {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mt-4">
+        <h1>학습된 모델 목록</h1>
+        <a href="{% url 'molecules:model_training' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> 새 모델 학습
+        </a>
+    </div>
+    
+    <!-- 포장 반감기 모델 -->
+    <div class="mt-4">
+        <h3><i class="fas fa-box"></i> 포장 반감기 예측 모델</h3>
+        {% if field_models %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>모델명</th>
+                        <th>R² Score</th>
+                        <th>RMSE</th>
+                        <th>MAE</th>
+                        <th>학습 샘플</th>
+                        <th>학습일</th>
+                        <th>상태</th>
+                        <th>작업</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for model in field_models %}
+                    <tr {% if model.is_active %}class="table-success"{% endif %}>
+                        <td>{{ model.name }}</td>
+                        <td><strong>{{ model.r2_score|floatformat:3 }}</strong></td>
+                        <td>{{ model.rmse|floatformat:2 }}</td>
+                        <td>{{ model.mae|floatformat:2 }}</td>
+                        <td>{{ model.training_samples }}</td>
+                        <td>{{ model.training_date|date:"Y-m-d H:i" }}</td>
+                        <td>
+                            {% if model.is_active %}
+                                <span class="badge bg-success">활성</span>
+                            {% else %}
+                                <span class="badge bg-secondary">비활성</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-info" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#modal-{{ model.id }}">
+                                상세
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">학습된 포장 반감기 모델이 없습니다.</p>
+        {% endif %}
+    </div>
+    
+    <!-- 실내 반감기 모델 -->
+    <div class="mt-5">
+        <h3><i class="fas fa-home"></i> 실내 반감기 예측 모델</h3>
+        {% if lab_models %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>모델명</th>
+                        <th>R² Score</th>
+                        <th>RMSE</th>
+                        <th>MAE</th>
+                        <th>학습 샘플</th>
+                        <th>학습일</th>
+                        <th>상태</th>
+                        <th>작업</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for model in lab_models %}
+                    <tr {% if model.is_active %}class="table-success"{% endif %}>
+                        <td>{{ model.name }}</td>
+                        <td><strong>{{ model.r2_score|floatformat:3 }}</strong></td>
+                        <td>{{ model.rmse|floatformat:2 }}</td>
+                        <td>{{ model.mae|floatformat:2 }}</td>
+                        <td>{{ model.training_samples }}</td>
+                        <td>{{ model.training_date|date:"Y-m-d H:i" }}</td>
+                        <td>
+                            {% if model.is_active %}
+                                <span class="badge bg-success">활성</span>
+                            {% else %}
+                                <span class="badge bg-secondary">비활성</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-info" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#modal-{{ model.id }}">
+                                상세
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">학습된 실내 반감기 모델이 없습니다.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 모델 상세 모달 -->
+{% for model in field_models %}
+<div class="modal fade" id="modal-{{ model.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ model.name }} - 상세 정보</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h6>특성 중요도</h6>
+                <div class="feature-importance">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>특성</th>
+                                <th>중요도</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for feature, importance in model.feature_importances.items %}
+                            <tr>
+                                <td>{{ feature }}</td>
+                                <td>{{ importance|floatformat:4 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% for model in lab_models %}
+<div class="modal fade" id="modal-{{ model.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ model.name }} - 상세 정보</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h6>특성 중요도</h6>
+                <div class="feature-importance">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>특성</th>
+                                <th>중요도</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for feature, importance in model.feature_importances.items %}
+                            <tr>
+                                <td>{{ feature }}</td>
+                                <td>{{ importance|floatformat:4 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

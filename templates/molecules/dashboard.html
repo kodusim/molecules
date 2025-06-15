@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}대시보드 - 화학물질 반감기 예측 시스템{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mt-4">대시보드</h1>
+    
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <h3>모델 성능</h3>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>모델명</th>
+                            <th>타입</th>
+                            <th>대상</th>
+                            <th>R² Score</th>
+                            <th>RMSE</th>
+                            <th>MAE</th>
+                            <th>학습일</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for model in models %}
+                        <tr>
+                            <td>{{ model.name }}</td>
+                            <td>{{ model.model_type }}</td>
+                            <td>{{ model.get_target_display }}</td>
+                            <td>{{ model.r2_score|floatformat:3 }}</td>
+                            <td>{{ model.rmse|floatformat:2 }}</td>
+                            <td>{{ model.mae|floatformat:2 }}</td>
+                            <td>{{ model.training_date|date:"Y-m-d" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center">학습된 모델이 없습니다.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <h3>계통별 통계</h3>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>계통</th>
+                            <th>화합물 수</th>
+                            <th>평균 포장반감기</th>
+                            <th>평균 실내반감기</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for stat in system_stats %}
+                        <tr>
+                            <td>{{ stat.system|default:"미분류" }}</td>
+                            <td>{{ stat.count }}</td>
+                            <td>{{ stat.avg_field_halflife|floatformat:1|default:"-" }}</td>
+                            <td>{{ stat.avg_lab_halflife|floatformat:1|default:"-" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center">데이터가 없습니다.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

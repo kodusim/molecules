@@ -34,22 +34,16 @@
                             <i class="fas fa-atom"></i> 화합물
                         </a>
                     </li>
-                    {% if user.is_authenticated %}
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-user"></i> {{ user.username }}
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{% url 'admin:index' %}">관리자</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#">로그아웃</a></li>
-                        </ul>
-                    </li>
-                    {% else %}
                     <li class="nav-item">
-                        <a class="nav-link" href="#">로그인</a>
+                        <a class="nav-link" href="{% url 'molecules:file_upload' %}">
+                            <i class="fas fa-upload"></i> 데이터 업로드
+                        </a>
                     </li>
-                    {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'molecules:model_training' %}">
+                            <i class="fas fa-brain"></i> 모델 학습
+                        </a>
+                    </li>
                 </ul>
             </div>
         </div>

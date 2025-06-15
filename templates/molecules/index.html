@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{% block title %}홈 - 화학물질 반감기 예측 시스템{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="p-5 mb-4 bg-light rounded-3">
+                <div class="container-fluid py-5">
+                    <h1 class="display-5 fw-bold">화학물질 반감기 예측 시스템</h1>
+                    <p class="col-md-8 fs-4">분자 구조와 특성을 기반으로 화학물질의 반감기를 예측합니다.</p>
+                    <a href="{% url 'molecules:compound_list' %}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-flask"></i> 화합물 목록 보기
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 통계 카드들 -->
+        <div class="col-md-3 mb-4">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <h5 class="card-title">등록된 화합물</h5>
+                    <h2 class="card-text">{{ total_compounds }}</h2>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-4">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <h5 class="card-title">예측 수행</h5>
+                    <h2 class="card-text">{{ total_predictions }}</h2>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-4">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <h5 class="card-title">활성 모델</h5>
+                    <h2 class="card-text">{{ active_models }}</h2>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-4">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <h5 class="card-title">데이터 업로드</h5>
+                    <h2 class="card-text">{{ recent_uploads|length }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 최근 예측 -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">최근 예측</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_predictions %}
+                    <div class="list-group">
+                        {% for prediction in recent_predictions %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ prediction.compound.name }}</h6>
+                                <small>{{ prediction.predicted_at|timesince }} 전</small>
+                            </div>
+                            <p class="mb-1">예측값: {{ prediction.predicted_value|floatformat:1 }}일</p>
+                            <small>모델: {{ prediction.model.name }}</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">아직 예측 기록이 없습니다.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 모델 성능 -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">최고 성능 모델</h5>
+                </div>
+                <div class="card-body">
+                    {% if best_field_model %}
+                    <h6>포장 반감기 예측</h6>
+                    <p>
+                        <strong>{{ best_field_model.name }}</strong><br>
+                        R² Score: {{ best_field_model.r2_score|floatformat:3 }}<br>
+                        RMSE: {{ best_field_model.rmse|floatformat:2 }}
+                    </p>
+                    {% endif %}
+                    
+                    {% if best_lab_model %}
+                    <h6>실내 반감기 예측</h6>
+                    <p>
+                        <strong>{{ best_lab_model.name }}</strong><br>
+                        R² Score: {{ best_lab_model.r2_score|floatformat:3 }}<br>
+                        RMSE: {{ best_lab_model.rmse|floatformat:2 }}
+                    </p>
+                    {% endif %}
+                    
+                    {% if not best_field_model and not best_lab_model %}
+                    <p class="text-muted">아직 학습된 모델이 없습니다.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

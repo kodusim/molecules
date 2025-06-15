@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}업로드 목록 - 화학물질 반감기 예측 시스템{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mt-4">
+        <h1>업로드 목록</h1>
+        <a href="{% url 'molecules:file_upload' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> 새 파일 업로드
+        </a>
+    </div>
+    
+    <div class="mt-4">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>파일명</th>
+                        <th>업로드 일시</th>
+                        <th>상태</th>
+                        <th>전체 행</th>
+                        <th>처리된 행</th>
+                        <th>비고</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for upload in uploads %}
+                    <tr>
+                        <td>{{ upload.file_name }}</td>
+                        <td>{{ upload.uploaded_at|date:"Y-m-d H:i" }}</td>
+                        <td>
+                            {% if upload.status == 'completed' %}
+                                <span class="badge bg-success">완료</span>
+                            {% elif upload.status == 'processing' %}
+                                <span class="badge bg-warning">처리중</span>
+                            {% elif upload.status == 'failed' %}
+                                <span class="badge bg-danger">실패</span>
+                            {% else %}
+                                <span class="badge bg-secondary">대기중</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ upload.total_rows }}</td>
+                        <td>{{ upload.processed_rows }}</td>
+                        <td>
+                            {% if upload.error_message %}
+                                <small class="text-muted">{{ upload.error_message|truncatewords:10 }}</small>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center">업로드된 파일이 없습니다.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

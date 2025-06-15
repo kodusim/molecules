@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}파일 업로드 - 화학물질 반감기 예측 시스템{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mt-4">데이터 파일 업로드</h1>
+    
+    <div class="row mt-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.file.id_for_label }}" class="form-label">
+                                데이터 파일 선택
+                            </label>
+                            {{ form.file }}
+                            <div class="form-text">
+                                Excel(.xlsx, .xls) 또는 CSV 파일을 업로드하세요. (최대 10MB)
+                            </div>
+                            {% if form.file.errors %}
+                                <div class="text-danger">
+                                    {{ form.file.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <h6>필수 열:</h6>
+                            <ul>
+                                <li>SMILES - 화학 구조 문자열</li>
+                            </ul>
+                            <h6>선택 열:</h6>
+                            <ul>
+                                <li>성분명/화합물명 - 화합물 이름</li>
+                                <li>포장반감기(일) - 포장 조건에서의 반감기</li>
+                                <li>실내반감기(일) - 실내 조건에서의 반감기</li>
+                                <li>계통/system - 화합물 계통</li>
+                                <li>활성성분함량(%) - 활성 성분 함량</li>
+                                <li>제형 - 제품 형태</li>
+                            </ul>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-upload"></i> 업로드
+                        </button>
+                        <a href="{% url 'molecules:upload_list' %}" class="btn btn-secondary">
+                            업로드 목록
+                        </a>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title">업로드 가이드</h5>
+                    <p class="card-text">
+                        1. Excel 또는 CSV 파일을 준비하세요.<br>
+                        2. SMILES 열은 필수입니다.<br>
+                        3. 파일을 선택하고 업로드 버튼을 클릭하세요.<br>
+                        4. 업로드된 데이터는 자동으로 처리됩니다.<br>
+                        5. 분자 특성이 자동으로 계산됩니다.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
