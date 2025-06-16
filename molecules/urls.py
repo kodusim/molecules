@@ -25,5 +25,4 @@ urlpatterns = [
     
     # 예측 관련
     path('predict/', views.predict, name='predict'),
-    path('predictions/', views.prediction_history, name='prediction_history'),
 ]

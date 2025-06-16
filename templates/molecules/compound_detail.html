@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ compound.name }} - 화학물질 반감기 예측 시스템{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="mt-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'molecules:compound_list' %}">화합물 목록</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ compound.name }}</li>
+            </ol>
+        </nav>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <h1>{{ compound.name }}</h1>
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0">화합물 정보</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>SMILES:</strong><br>{{ compound.smiles }}</p>
+                            <p><strong>계통:</strong> {{ compound.system|default:"미분류" }}</p>
+                            <p><strong>제형:</strong> {{ compound.formulation|default:"-" }}</p>
+                            <p><strong>활성성분함량:</strong> {{ compound.active_ingredient_content|floatformat:1|default:"-" }}%</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>포장 반감기:</strong> {{ compound.field_halflife|floatformat:1|default:"-" }}일</p>
+                            <p><strong>실내 반감기:</strong> {{ compound.lab_halflife|floatformat:1|default:"-" }}일</p>
+                            <p><strong>등록일:</strong> {{ compound.created_at|date:"Y-m-d" }}</p>
+                            <p><strong>등록자:</strong> {{ compound.created_by|default:"시스템" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0">분자 특성</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>분자량:</strong> {{ compound.molecular_weight|floatformat:2|default:"-" }} g/mol</p>
+                            <p><strong>LogP:</strong> {{ compound.logp|floatformat:2|default:"-" }}</p>
+                            <p><strong>TPSA:</strong> {{ compound.tpsa|floatformat:2|default:"-" }} Ų</p>
+                            <p><strong>수소 공여체:</strong> {{ compound.num_h_donors|default:"-" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>수소 수용체:</strong> {{ compound.num_h_acceptors|default:"-" }}</p>
+                            <p><strong>회전 가능 결합:</strong> {{ compound.num_rotatable_bonds|default:"-" }}</p>
+                            <p><strong>방향족 고리:</strong> {{ compound.num_aromatic_rings|default:"-" }}</p>
+                            <p><strong>무거운 원자:</strong> {{ compound.num_heavy_atoms|default:"-" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            {% if predictions %}
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0">예측 기록</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>모델</th>
+                                    <th>대상</th>
+                                    <th>예측값</th>
+                                    <th>신뢰구간</th>
+                                    <th>예측일</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for prediction in predictions %}
+                                <tr>
+                                    <td>{{ prediction.model.name }}</td>
+                                    <td>
+                                        {% if prediction.model.target == 'field' %}
+                                            <span class="badge bg-primary">포장</span>
+                                        {% else %}
+                                            <span class="badge bg-success">실내</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><strong>{{ prediction.predicted_value|floatformat:1 }}일</strong></td>
+                                    <td>
+                                        {{ prediction.confidence_lower|floatformat:1 }} - 
+                                        {{ prediction.confidence_upper|floatformat:1 }}일
+                                    </td>
+                                    <td>{{ prediction.predicted_at|date:"Y-m-d H:i" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="col-md-4">
+            {% if compound.molecule_image %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">분자 구조</h5>
+                </div>
+                <div class="card-body text-center">
+                    <img src="{{ compound.molecule_image.url }}" alt="{{ compound.name }} 분자 구조" class="img-fluid">
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0">작업</h5>
+                </div>
+                <div class="card-body">
+                    <a href="{% url 'molecules:predict' %}" class="btn btn-primary btn-block mb-2">
+                        <i class="fas fa-calculator"></i> 새 예측 수행
+                    </a>
+                    <a href="{% url 'molecules:compound_list' %}" class="btn btn-secondary btn-block">
+                        <i class="fas fa-arrow-left"></i> 목록으로 돌아가기
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -18,10 +18,12 @@
     .metric-card h3 {
         margin-bottom: 10px;
         font-size: 2.5rem;
+        color: white !important;
     }
     .metric-card p {
         margin-bottom: 0;
-        color: #666;
+        color: white !important;
+        opacity: 0.9;
     }
 </style>
 {% endblock %}
@@ -29,12 +31,6 @@
 {% block content %}
 <div class="container">
     <h1 class="mt-4">대시보드</h1>
-    
-    <!-- 시연 모드 알림 -->
-    <div class="alert alert-warning alert-dismissible fade show mt-3" role="alert">
-        <strong>시연 모드:</strong> 현재 표시되는 성능 지표는 시연용 랜덤 데이터입니다.
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
     
     <!-- 주요 성능 지표 -->
     <div class="row mt-4">

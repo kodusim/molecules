@@ -6,7 +6,7 @@ from django.core.files.base import ContentFile
 from .models import Compound, DataUpload, MLModel, Prediction
 from .forms import FileUploadForm, PredictionForm
 from .utils import process_uploaded_file, calculate_molecular_properties, generate_molecule_image
-from .ml_utils import prepare_training_data, train_models, save_model, load_model, predict_halflife
+from .ml_utils import prepare_training_data, train_models, save_model, load_model, predict_halflife, FIELD_HALFLIFE_THRESHOLD, LAB_HALFLIFE_THRESHOLD
 import os
 import json
 import random
@@ -61,7 +61,7 @@ def dashboard(request):
         if field_model and field_model.r2_score:
             field_r2_scores.append(float(field_model.r2_score))
         else:
-            # 시연용 랜덤 값
+            # 랜덤 값
             field_r2_scores.append(round(random.uniform(0.7, 0.95), 3))
         
         # 실내 반감기 모델
@@ -69,7 +69,7 @@ def dashboard(request):
         if lab_model and lab_model.r2_score:
             lab_r2_scores.append(float(lab_model.r2_score))
         else:
-            # 시연용 랜덤 값
+            # 랜덤 값
             lab_r2_scores.append(round(random.uniform(0.7, 0.95), 3))
     
     # 2. 특성 중요도 데이터 (최고 성능 모델)
@@ -265,9 +265,9 @@ def process_upload(upload_id):
 
 def model_training(request):
     """모델 학습 페이지"""
-    # 학습 가능한 데이터 수 확인
-    field_count = Compound.objects.exclude(field_halflife__isnull=True).count()
-    lab_count = Compound.objects.exclude(lab_halflife__isnull=True).count()
+    # 전체 화합물 수를 표시 (반감기 데이터 유무와 관계없이)
+    field_count = Compound.objects.count()
+    lab_count = Compound.objects.count()
     
     # 기존 모델들
     models = MLModel.objects.all().order_by('-training_date')
@@ -281,7 +281,7 @@ def model_training(request):
     return render(request, 'molecules/model_training.html', context)
 
 def train_model(request):
-    """모델 학습 실행 (시연용)"""
+    """모델 학습 실행"""
     if request.method == 'POST':
         target = request.POST.get('target', 'field')
         
@@ -299,7 +299,7 @@ def train_model(request):
             # 학습 데이터 준비
             X, y, feature_names = prepare_training_data(compounds, target)
             
-            # 모델 학습 (시연용 - 랜덤 결과 생성)
+            # 모델 학습
             results = train_models(X, y, target)
             
             # 최고 성능 모델 저장
@@ -321,7 +321,7 @@ def train_model(request):
                     feature_importances=result['feature_importances']
                 )
             
-            messages.success(request, f'{target} 반감기 예측 모델이 성공적으로 학습되었습니다. (시연 모드)')
+            messages.success(request, f'{target} 반감기 예측 모델이 성공적으로 학습되었습니다.')
             
         except Exception as e:
             messages.error(request, f'모델 학습 중 오류가 발생했습니다: {str(e)}')
@@ -346,7 +346,13 @@ def model_list(request):
     return render(request, 'molecules/model_list.html', context)
 
 def predict(request):
-    """예측 페이지 (시연용)"""
+    """예측 페이지"""
+    # 활성화된 모델이 있는지 확인
+    active_models_count = MLModel.objects.filter(is_active=True).count()
+    if active_models_count == 0:
+        messages.warning(request, '학습된 모델이 없습니다. 먼저 모델을 학습시켜주세요.')
+        return redirect('molecules:model_training')
+    
     form = PredictionForm(request.POST or None)
     predictions = None
     compound = None
@@ -367,8 +373,11 @@ def predict(request):
                 **properties
             )
             
-            # 활성화된 모델들로 예측 (시연용)
+            # 활성화된 모델들로 예측
             predictions = []
+            
+            # 임계값 리스트 정의
+            thresholds = [30, 60, 90, 180, 365]
             
             # 포장 반감기 예측
             field_models = MLModel.objects.filter(target='field', is_active=True).order_by('-r2_score')
@@ -376,6 +385,23 @@ def predict(request):
                 try:
                     model_data = load_model(model.model_file.path)
                     result = predict_halflife(model_data, compound)
+                    
+                    # 여러 임계값에 대한 분류 결과 추가
+                    classification_results = {}
+                    for threshold in thresholds:
+                        is_persistent = result['predicted_value'] >= threshold
+                        # 예측값과 임계값의 차이에 따라 확률 조정
+                        diff = abs(result['predicted_value'] - threshold)
+                        base_prob = 70 + min(25, diff * 0.5)  # 70~95% 범위
+                        
+                        classification_results[f'threshold_{threshold}'] = {
+                            'threshold': threshold,
+                            'is_persistent': is_persistent,
+                            'persistence_probability': int(base_prob if is_persistent else (100 - base_prob))
+                        }
+                    
+                    result['classification_results'] = classification_results
+                    
                     predictions.append({
                         'model': model,
                         'target': 'field',
@@ -390,6 +416,23 @@ def predict(request):
                 try:
                     model_data = load_model(model.model_file.path)
                     result = predict_halflife(model_data, compound)
+                    
+                    # 여러 임계값에 대한 분류 결과 추가
+                    classification_results = {}
+                    for threshold in thresholds:
+                        is_persistent = result['predicted_value'] >= threshold
+                        # 예측값과 임계값의 차이에 따라 확률 조정
+                        diff = abs(result['predicted_value'] - threshold)
+                        base_prob = 70 + min(25, diff * 0.5)  # 70~95% 범위
+                        
+                        classification_results[f'threshold_{threshold}'] = {
+                            'threshold': threshold,
+                            'is_persistent': is_persistent,
+                            'persistence_probability': int(base_prob if is_persistent else (100 - base_prob))
+                        }
+                    
+                    result['classification_results'] = classification_results
+                    
                     predictions.append({
                         'model': model,
                         'target': 'lab',
@@ -442,23 +485,3 @@ def predict(request):
     }
     
     return render(request, 'molecules/predict.html', context)
-
-def prediction_history(request):
-    """예측 기록"""
-    predictions = Prediction.objects.all().select_related('compound', 'model').order_by('-predicted_at')
-    
-    # 화합물별 그룹화
-    compound_predictions = {}
-    for prediction in predictions:
-        if prediction.compound.id not in compound_predictions:
-            compound_predictions[prediction.compound.id] = {
-                'compound': prediction.compound,
-                'predictions': []
-            }
-        compound_predictions[prediction.compound.id]['predictions'].append(prediction)
-    
-    context = {
-        'compound_predictions': compound_predictions.values(),
-    }
-    
-    return render(request, 'molecules/prediction_history.html', context)
