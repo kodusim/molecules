@@ -4,10 +4,11 @@ from django.views.generic import ListView, DetailView
 from django.db.models import Count, Avg
 from django.core.files.base import ContentFile
 from .models import Compound, DataUpload, MLModel, Prediction
-from .forms import FileUploadForm
+from .forms import FileUploadForm, PredictionForm
 from .utils import process_uploaded_file, calculate_molecular_properties, generate_molecule_image
 from .ml_utils import prepare_training_data, train_models, save_model, load_model, predict_halflife
 import os
+import json
 
 def index(request):
     """홈페이지 뷰"""
@@ -40,9 +41,57 @@ def dashboard(request):
         avg_lab_halflife=Avg('lab_halflife')
     ).order_by('-count')
     
+    # Chart.js용 데이터 준비
+    # 1. 모델 성능 비교 데이터
+    model_names = []
+    field_r2_scores = []
+    lab_r2_scores = []
+    
+    for model in models:
+        if model.target == 'field':
+            model_names.append(model.name)
+            field_r2_scores.append(float(model.r2_score) if model.r2_score else 0)
+        elif model.target == 'lab':
+            if model.name not in model_names:
+                model_names.append(model.name)
+            lab_r2_scores.append(float(model.r2_score) if model.r2_score else 0)
+    
+    # 2. 특성 중요도 데이터 (최고 성능 모델)
+    best_model = models.order_by('-r2_score').first()
+    feature_importance_labels = []
+    feature_importance_values = []
+    
+    if best_model and best_model.feature_importances:
+        # 상위 8개 특성만 선택
+        sorted_features = sorted(
+            best_model.feature_importances.items(), 
+            key=lambda x: x[1], 
+            reverse=True
+        )[:8]
+        
+        for feature, importance in sorted_features:
+            feature_importance_labels.append(feature)
+            feature_importance_values.append(float(importance))
+    
+    # 3. 계통별 통계 데이터
+    system_names = []
+    system_counts = []
+    
+    for stat in system_stats:
+        system_names.append(stat['system'] or '미분류')
+        system_counts.append(stat['count'])
+    
     context = {
         'models': models,
         'system_stats': system_stats,
+        # Chart.js 데이터
+        'model_names': json.dumps(model_names),
+        'field_r2_scores': json.dumps(field_r2_scores),
+        'lab_r2_scores': json.dumps(lab_r2_scores),
+        'feature_importance_labels': json.dumps(feature_importance_labels),
+        'feature_importance_values': json.dumps(feature_importance_values),
+        'system_names': json.dumps(system_names),
+        'system_counts': json.dumps(system_counts),
     }
     
     return render(request, 'molecules/dashboard.html', context)
@@ -261,3 +310,123 @@ def model_list(request):
     }
     
     return render(request, 'molecules/model_list.html', context)
+
+def predict(request):
+    """예측 페이지"""
+    form = PredictionForm(request.POST or None)
+    predictions = None
+    compound = None
+    
+    if request.method == 'POST' and form.is_valid():
+        # 화합물 정보 생성 (임시)
+        compound_data = form.cleaned_data
+        
+        # SMILES로부터 분자 특성 계산
+        properties = calculate_molecular_properties(compound_data['smiles'])
+        
+        if properties:
+            # 임시 화합물 객체 생성 (DB에 저장하지 않음)
+            compound = Compound(
+                name=compound_data['name'],
+                smiles=compound_data['smiles'],
+                system=compound_data.get('system'),
+                active_ingredient_content=compound_data.get('active_ingredient_content'),
+                formulation=compound_data.get('formulation'),
+                **properties
+            )
+            
+            # 활성화된 모델들로 예측
+            predictions = []
+            
+            # 포장 반감기 예측
+            field_models = MLModel.objects.filter(target='field', is_active=True).order_by('-r2_score')
+            for model in field_models[:3]:  # 상위 3개 모델
+                try:
+                    model_data = load_model(model.model_file.path)
+                    result = predict_halflife(model_data, compound)
+                    predictions.append({
+                        'model': model,
+                        'target': 'field',
+                        'prediction': result
+                    })
+                except Exception as e:
+                    print(f"예측 오류 ({model.name}): {e}")
+            
+            # 실내 반감기 예측
+            lab_models = MLModel.objects.filter(target='lab', is_active=True).order_by('-r2_score')
+            for model in lab_models[:3]:  # 상위 3개 모델
+                try:
+                    model_data = load_model(model.model_file.path)
+                    result = predict_halflife(model_data, compound)
+                    predictions.append({
+                        'model': model,
+                        'target': 'lab',
+                        'prediction': result
+                    })
+                except Exception as e:
+                    print(f"예측 오류 ({model.name}): {e}")
+            
+            # 예측 결과가 있으면 저장 옵션 제공
+            if predictions and request.POST.get('save_prediction'):
+                # 화합물 저장
+                saved_compound, created = Compound.objects.get_or_create(
+                    smiles=compound.smiles,
+                    defaults={
+                        'name': compound.name,
+                        'system': compound.system,
+                        'active_ingredient_content': compound.active_ingredient_content,
+                        'formulation': compound.formulation,
+                        'molecular_weight': compound.molecular_weight,
+                        'logp': compound.logp,
+                        'tpsa': compound.tpsa,
+                        'num_h_donors': compound.num_h_donors,
+                        'num_h_acceptors': compound.num_h_acceptors,
+                        'num_rotatable_bonds': compound.num_rotatable_bonds,
+                        'num_aromatic_rings': compound.num_aromatic_rings,
+                        'num_heavy_atoms': compound.num_heavy_atoms,
+                    }
+                )
+                
+                # 예측 결과 저장
+                for pred in predictions:
+                    Prediction.objects.create(
+                        compound=saved_compound,
+                        model=pred['model'],
+                        predicted_value=pred['prediction']['predicted_value'],
+                        confidence_lower=pred['prediction']['confidence_lower'],
+                        confidence_upper=pred['prediction']['confidence_upper'],
+                        input_features=pred['prediction']['input_features']
+                    )
+                
+                messages.success(request, '예측 결과가 저장되었습니다.')
+                return redirect('molecules:compound_detail', pk=saved_compound.id)
+        else:
+            messages.error(request, '유효하지 않은 SMILES 문자열입니다.')
+    
+    context = {
+        'form': form,
+        'predictions': predictions,
+        'compound': compound,
+    }
+    
+    return render(request, 'molecules/predict.html', context)
+
+def prediction_history(request):
+    """예측 기록"""
+    predictions = Prediction.objects.all().select_related('compound', 'model').order_by('-predicted_at')
+    
+    # 화합물별 그룹화
+    compound_predictions = {}
+    for prediction in predictions:
+        if prediction.compound.id not in compound_predictions:
+            compound_predictions[prediction.compound.id] = {
+                'compound': prediction.compound,
+                'predictions': []
+            }
+        compound_predictions[prediction.compound.id]['predictions'].append(prediction)
+    
+    context = {
+        'compound_predictions': compound_predictions.values(),
+    }
+    
+    return render(request, 'molecules/prediction_history.html', context)

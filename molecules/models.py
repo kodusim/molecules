@@ -61,7 +61,7 @@ class Compound(models.Model):
 class DataUpload(models.Model):
     """데이터 업로드 기록"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='업로드한 사용자')
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, verbose_name='업로드한 사용자')
     uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name='업로드 시간')
     
     # 파일 정보

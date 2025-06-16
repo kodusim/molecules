@@ -2,13 +2,81 @@
 
 {% block title %}대시보드 - 화학물질 반감기 예측 시스템{% endblock %}
 
+{% block extra_css %}
+<style>
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container">
     <h1 class="mt-4">대시보드</h1>
     
+    <!-- 차트 영역 -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">모델 성능 비교 (R² Score)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="modelPerformanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">특성 중요도 (최고 성능 모델)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="featureImportanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">계통별 화합물 분포</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="systemDistributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">계통별 평균 반감기</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="systemHalflifeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 기존 테이블들 -->
     <div class="row mt-4">
         <div class="col-md-12">
-            <h3>모델 성능</h3>
+            <h3>모델 성능 상세</h3>
             <div class="table-responsive">
                 <table class="table table-striped">
                     <thead>
@@ -27,8 +95,14 @@
                         <tr>
                             <td>{{ model.name }}</td>
                             <td>{{ model.model_type }}</td>
-                            <td>{{ model.get_target_display }}</td>
-                            <td>{{ model.r2_score|floatformat:3 }}</td>
+                            <td>
+                                {% if model.target == 'field' %}
+                                    <span class="badge bg-primary">포장</span>
+                                {% else %}
+                                    <span class="badge bg-success">실내</span>
+                                {% endif %}
+                            </td>
+                            <td><strong>{{ model.r2_score|floatformat:3 }}</strong></td>
                             <td>{{ model.rmse|floatformat:2 }}</td>
                             <td>{{ model.mae|floatformat:2 }}</td>
                             <td>{{ model.training_date|date:"Y-m-d" }}</td>
@@ -76,4 +150,145 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// 모델 성능 비교 차트
+const modelPerformanceCtx = document.getElementById('modelPerformanceChart').getContext('2d');
+new Chart(modelPerformanceCtx, {
+    type: 'bar',
+    data: {
+        labels: {{ model_names|safe }},
+        datasets: [{
+            label: '포장 반감기 R²',
+            data: {{ field_r2_scores|safe }},
+            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+            borderColor: 'rgb(54, 162, 235)',
+            borderWidth: 1
+        }, {
+            label: '실내 반감기 R²',
+            data: {{ lab_r2_scores|safe }},
+            backgroundColor: 'rgba(75, 192, 192, 0.5)',
+            borderColor: 'rgb(75, 192, 192)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 1
+            }
+        }
+    }
+});
+
+// 특성 중요도 차트
+const featureImportanceCtx = document.getElementById('featureImportanceChart').getContext('2d');
+new Chart(featureImportanceCtx, {
+    type: 'bar',
+    data: {
+        labels: {{ feature_importance_labels|safe }},
+        datasets: [{
+            label: '중요도',
+            data: {{ feature_importance_values|safe }},
+            backgroundColor: [
+                'rgba(255, 99, 132, 0.7)',
+                'rgba(54, 162, 235, 0.7)',
+                'rgba(255, 206, 86, 0.7)',
+                'rgba(75, 192, 192, 0.7)',
+                'rgba(153, 102, 255, 0.7)',
+                'rgba(255, 159, 64, 0.7)',
+                'rgba(199, 199, 199, 0.7)',
+                'rgba(83, 102, 255, 0.7)'
+            ],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            }
+        }
+    }
+});
+
+// 계통별 분포 차트
+const systemDistributionCtx = document.getElementById('systemDistributionChart').getContext('2d');
+new Chart(systemDistributionCtx, {
+    type: 'pie',
+    data: {
+        labels: {{ system_names|safe }},
+        datasets: [{
+            data: {{ system_counts|safe }},
+            backgroundColor: [
+                'rgba(255, 99, 132, 0.7)',
+                'rgba(54, 162, 235, 0.7)',
+                'rgba(255, 206, 86, 0.7)',
+                'rgba(75, 192, 192, 0.7)',
+                'rgba(153, 102, 255, 0.7)',
+                'rgba(255, 159, 64, 0.7)',
+                'rgba(199, 199, 199, 0.7)',
+                'rgba(83, 102, 255, 0.7)'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false
+    }
+});
+
+// 계통별 평균 반감기 차트
+const systemHalflifeCtx = document.getElementById('systemHalflifeChart').getContext('2d');
+const systemStats = {{ system_stats|safe }};
+
+// 데이터 준비
+const systemLabels = [];
+const avgFieldHalflife = [];
+const avgLabHalflife = [];
+
+{% for stat in system_stats %}
+systemLabels.push('{{ stat.system|default:"미분류" }}');
+avgFieldHalflife.push({{ stat.avg_field_halflife|default:"null" }});
+avgLabHalflife.push({{ stat.avg_lab_halflife|default:"null" }});
+{% endfor %}
+
+new Chart(systemHalflifeCtx, {
+    type: 'bar',
+    data: {
+        labels: systemLabels,
+        datasets: [{
+            label: '평균 포장반감기 (일)',
+            data: avgFieldHalflife,
+            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+            borderColor: 'rgb(54, 162, 235)',
+            borderWidth: 1
+        }, {
+            label: '평균 실내반감기 (일)',
+            data: avgLabHalflife,
+            backgroundColor: 'rgba(75, 192, 192, 0.5)',
+            borderColor: 'rgb(75, 192, 192)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+</script>
 {% endblock %}
