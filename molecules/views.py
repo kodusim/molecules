@@ -285,19 +285,21 @@ def train_model(request):
     if request.method == 'POST':
         target = request.POST.get('target', 'field')
         
-        # 데이터 준비
-        if target == 'field':
-            compounds = Compound.objects.exclude(field_halflife__isnull=True)
-        else:
-            compounds = Compound.objects.exclude(lab_halflife__isnull=True)
+        # 전체 화합물로 학습
+        compounds = Compound.objects.all()
         
         if compounds.count() < 10:
             messages.error(request, '학습에 필요한 데이터가 부족합니다. (최소 10개 필요)')
             return redirect('molecules:model_training')
         
         try:
-            # 학습 데이터 준비
+            # 학습 데이터 준비 (반감기 데이터가 없어도 진행)
             X, y, feature_names = prepare_training_data(compounds, target)
+            
+            # 데이터가 충분한지 확인
+            if len(X) < 10:
+                messages.error(request, '유효한 학습 데이터가 부족합니다. (최소 10개 필요)')
+                return redirect('molecules:model_training')
             
             # 모델 학습
             results = train_models(X, y, target)

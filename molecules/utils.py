@@ -74,17 +74,17 @@ def process_uploaded_file(file_path, file_type='excel'):
         
         # 다른 열들 매핑
         for col in df.columns:
-            if '성분명' in col or '화합물명' in col:
+            if '성분명' in col or '화합물명' in col or 'Ingredient name' in col:
                 column_mapping[col] = 'name'
-            elif '포장' in col and '반감기' in col:
+            elif ('포장' in col and '반감기' in col) or 'Packaging half-life' in col:
                 column_mapping[col] = 'field_halflife'
-            elif '실내' in col and '반감기' in col:
+            elif ('실내' in col and '반감기' in col) or 'Indoor half-life' in col:
                 column_mapping[col] = 'lab_halflife'
             elif '계통' in col or 'system' in col.lower():
                 column_mapping[col] = 'system'
-            elif '활성' in col and '함량' in col:
+            elif ('활성' in col and '함량' in col) or 'Active ingredient content' in col:
                 column_mapping[col] = 'active_ingredient_content'
-            elif '제형' in col:
+            elif '제형' in col or 'Formulation' in col:
                 column_mapping[col] = 'formulation'
         
         df_renamed = df.rename(columns=column_mapping)
