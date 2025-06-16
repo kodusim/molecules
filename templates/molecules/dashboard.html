@@ -9,12 +9,60 @@
         height: 400px;
         width: 100%;
     }
+    .metric-card {
+        text-align: center;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    .metric-card h3 {
+        margin-bottom: 10px;
+        font-size: 2.5rem;
+    }
+    .metric-card p {
+        margin-bottom: 0;
+        color: #666;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container">
     <h1 class="mt-4">대시보드</h1>
+    
+    <!-- 시연 모드 알림 -->
+    <div class="alert alert-warning alert-dismissible fade show mt-3" role="alert">
+        <strong>시연 모드:</strong> 현재 표시되는 성능 지표는 시연용 랜덤 데이터입니다.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    
+    <!-- 주요 성능 지표 -->
+    <div class="row mt-4">
+        <div class="col-md-3">
+            <div class="metric-card bg-primary text-white">
+                <h3>{{ total_models|default:"0" }}</h3>
+                <p>학습된 모델</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card bg-success text-white">
+                <h3>{{ avg_r2_score|floatformat:2|default:"0.00" }}</h3>
+                <p>평균 R² Score</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card bg-info text-white">
+                <h3>{{ total_compounds|default:"0" }}</h3>
+                <p>등록된 화합물</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card bg-warning text-white">
+                <h3>{{ total_predictions|default:"0" }}</h3>
+                <p>예측 수행</p>
+            </div>
+        </div>
+    </div>
     
     <!-- 차트 영역 -->
     <div class="row mt-4">
@@ -141,7 +189,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="4" class="text-center">데이터가 없습니다.</td>
+                            <td colspan="6" class="text-center">데이터가 없습니다.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -155,139 +203,110 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-// 차트가 그려질 때까지 대기
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, starting charts...');
     
     // 모델 성능 비교 차트
     const modelPerformanceCtx = document.getElementById('modelPerformanceChart');
     if (modelPerformanceCtx) {
-        console.log('Creating model performance chart...');
-        try {
-            const modelPerformanceChart = new Chart(modelPerformanceCtx, {
-                type: 'bar',
-                data: {
-                    labels: {{ model_names|safe }},
-                    datasets: [{
-                        label: '포장 반감기 R²',
-                        data: {{ field_r2_scores|safe }},
-                        backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                        borderColor: 'rgb(54, 162, 235)',
-                        borderWidth: 1
-                    }, {
-                        label: '실내 반감기 R²',
-                        data: {{ lab_r2_scores|safe }},
-                        backgroundColor: 'rgba(75, 192, 192, 0.5)',
-                        borderColor: 'rgb(75, 192, 192)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 1
-                        }
+        const modelPerformanceChart = new Chart(modelPerformanceCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ model_names|safe }},
+                datasets: [{
+                    label: '포장 반감기 R²',
+                    data: {{ field_r2_scores|safe }},
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgb(54, 162, 235)',
+                    borderWidth: 1
+                }, {
+                    label: '실내 반감기 R²',
+                    data: {{ lab_r2_scores|safe }},
+                    backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                    borderColor: 'rgb(75, 192, 192)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1
                     }
                 }
-            });
-            console.log('Model performance chart created successfully');
-        } catch (e) {
-            console.error('Error creating model performance chart:', e);
-        }
+            }
+        });
     }
 
     // 특성 중요도 차트
     const featureImportanceCtx = document.getElementById('featureImportanceChart');
     if (featureImportanceCtx) {
-        console.log('Creating feature importance chart...');
-        try {
-            const featureImportanceChart = new Chart(featureImportanceCtx, {
-                type: 'bar',
-                data: {
-                    labels: {{ feature_importance_labels|safe }},
-                    datasets: [{
-                        label: '중요도',
-                        data: {{ feature_importance_values|safe }},
-                        backgroundColor: [
-                            'rgba(255, 99, 132, 0.7)',
-                            'rgba(54, 162, 235, 0.7)',
-                            'rgba(255, 206, 86, 0.7)',
-                            'rgba(75, 192, 192, 0.7)',
-                            'rgba(153, 102, 255, 0.7)',
-                            'rgba(255, 159, 64, 0.7)',
-                            'rgba(199, 199, 199, 0.7)',
-                            'rgba(83, 102, 255, 0.7)'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
+        const featureImportanceChart = new Chart(featureImportanceCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ feature_importance_labels|safe }},
+                datasets: [{
+                    label: '중요도',
+                    data: {{ feature_importance_values|safe }},
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.7)',
+                        'rgba(54, 162, 235, 0.7)',
+                        'rgba(255, 206, 86, 0.7)',
+                        'rgba(75, 192, 192, 0.7)',
+                        'rgba(153, 102, 255, 0.7)',
+                        'rgba(255, 159, 64, 0.7)',
+                        'rgba(199, 199, 199, 0.7)',
+                        'rgba(83, 102, 255, 0.7)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
                     }
                 }
-            });
-            console.log('Feature importance chart created successfully');
-        } catch (e) {
-            console.error('Error creating feature importance chart:', e);
-        }
+            }
+        });
     }
 
     // 계통별 분포 차트
     const systemDistributionCtx = document.getElementById('systemDistributionChart');
     if (systemDistributionCtx) {
-        console.log('Creating system distribution chart...');
-        try {
-            const systemDistributionChart = new Chart(systemDistributionCtx, {
-                type: 'pie',
-                data: {
-                    labels: {{ system_names|safe }},
-                    datasets: [{
-                        data: {{ system_counts|safe }},
-                        backgroundColor: [
-                            'rgba(255, 99, 132, 0.7)',
-                            'rgba(54, 162, 235, 0.7)',
-                            'rgba(255, 206, 86, 0.7)',
-                            'rgba(75, 192, 192, 0.7)',
-                            'rgba(153, 102, 255, 0.7)',
-                            'rgba(255, 159, 64, 0.7)',
-                            'rgba(199, 199, 199, 0.7)',
-                            'rgba(83, 102, 255, 0.7)',
-                            'rgba(255, 99, 132, 0.7)',
-                            'rgba(54, 162, 235, 0.7)',
-                            'rgba(255, 206, 86, 0.7)',
-                            'rgba(75, 192, 192, 0.7)',
-                            'rgba(153, 102, 255, 0.7)',
-                            'rgba(255, 159, 64, 0.7)',
-                            'rgba(199, 199, 199, 0.7)',
-                            'rgba(83, 102, 255, 0.7)'
-                        ]
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false
-                }
-            });
-            console.log('System distribution chart created successfully');
-        } catch (e) {
-            console.error('Error creating system distribution chart:', e);
-        }
+        const systemDistributionChart = new Chart(systemDistributionCtx, {
+            type: 'pie',
+            data: {
+                labels: {{ system_names|safe }},
+                datasets: [{
+                    data: {{ system_counts|safe }},
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.7)',
+                        'rgba(54, 162, 235, 0.7)',
+                        'rgba(255, 206, 86, 0.7)',
+                        'rgba(75, 192, 192, 0.7)',
+                        'rgba(153, 102, 255, 0.7)',
+                        'rgba(255, 159, 64, 0.7)',
+                        'rgba(199, 199, 199, 0.7)',
+                        'rgba(83, 102, 255, 0.7)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
     }
 
     // 계통별 평균 반감기 차트
     const systemHalflifeCtx = document.getElementById('systemHalflifeChart');
     if (systemHalflifeCtx) {
-        console.log('Creating system halflife chart...');
-        // 데이터 준비
         const systemLabels = [];
         const avgFieldHalflife = [];
         const avgLabHalflife = [];
@@ -298,48 +317,37 @@ document.addEventListener('DOMContentLoaded', function() {
         avgLabHalflife.push({{ stat.avg_lab_halflife|default:"null" }});
         {% endfor %}
 
-        try {
-            const systemHalflifeChart = new Chart(systemHalflifeCtx, {
-                type: 'bar',
-                data: {
-                    labels: systemLabels,
-                    datasets: [{
-                        label: '평균 포장반감기 (일)',
-                        data: avgFieldHalflife,
-                        backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                        borderColor: 'rgb(54, 162, 235)',
-                        borderWidth: 1
-                    }, {
-                        label: '평균 실내반감기 (일)',
-                        data: avgLabHalflife,
-                        backgroundColor: 'rgba(75, 192, 192, 0.5)',
-                        borderColor: 'rgb(75, 192, 192)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
+        const systemHalflifeChart = new Chart(systemHalflifeCtx, {
+            type: 'bar',
+            data: {
+                labels: systemLabels,
+                datasets: [{
+                    label: '평균 포장반감기 (일)',
+                    data: avgFieldHalflife,
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgb(54, 162, 235)',
+                    borderWidth: 1
+                }, {
+                    label: '평균 실내반감기 (일)',
+                    data: avgLabHalflife,
+                    backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                    borderColor: 'rgb(75, 192, 192)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
                     }
                 }
-            });
-            console.log('System halflife chart created successfully');
-        } catch (e) {
-            console.error('Error creating system halflife chart:', e);
-        }
+            }
+        });
     }
     
-    // 디버깅을 위한 콘솔 로그
-    console.log('Model names:', {{ model_names|safe }});
-    console.log('Field R2 scores:', {{ field_r2_scores|safe }});
-    console.log('Lab R2 scores:', {{ lab_r2_scores|safe }});
-    console.log('System names:', {{ system_names|safe }});
-    console.log('System counts:', {{ system_counts|safe }});
-    console.log('Chart.js version:', Chart.version);
+    console.log('All charts created successfully');
 });
 </script>
 {% endblock %}

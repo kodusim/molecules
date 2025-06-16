@@ -27,7 +27,7 @@ class FileUploadForm(forms.ModelForm):
         return file
 
 class PredictionForm(forms.Form):
-    """화합물 반감기 예측을 위한 폼"""
+    """화합물 반감기 예측을 위한 폼 (제형과 활성성분함량 제거)"""
     name = forms.CharField(
         max_length=200,
         label='화합물명',
@@ -52,25 +52,4 @@ class PredictionForm(forms.Form):
         required=False,
         label='계통',
         widget=forms.Select(attrs={'class': 'form-select'})
-    )
-    
-    active_ingredient_content = forms.FloatField(
-        required=False,
-        label='활성성분함량(%)',
-        widget=forms.NumberInput(attrs={
-            'class': 'form-control',
-            'step': '0.1',
-            'min': '0',
-            'max': '100'
-        })
-    )
-    
-    formulation = forms.CharField(
-        max_length=100,
-        required=False,
-        label='제형',
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': '예: 수화제'
-        })
     )

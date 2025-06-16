@@ -16,6 +16,9 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = ['*']
 
+# 시연 모드 설정
+DEMO_MODE = True  # 시연 모드 활성화
+
 # Application definition
 INSTALLED_APPS = [
     "django.contrib.admin",

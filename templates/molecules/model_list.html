@@ -8,6 +8,17 @@
         max-height: 300px;
         overflow-y: auto;
     }
+    .classification-metrics {
+        margin-top: 15px;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+    }
+    .metric-badge {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.8rem;
+        margin-right: 0.5rem;
+    }
 </style>
 {% endblock %}
 
@@ -20,18 +31,23 @@
         </a>
     </div>
     
+    <!-- 시연 모드 알림 -->
+    <div class="alert alert-warning alert-dismissible fade show mt-3" role="alert">
+        <strong>시연 모드:</strong> 표시되는 성능 지표는 시연용 랜덤 데이터입니다.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    
     <!-- 포장 반감기 모델 -->
     <div class="mt-4">
-        <h3><i class="fas fa-box"></i> 포장 반감기 예측 모델</h3>
+        <h3><i class="fas fa-box"></i> 포장 반감기 예측 모델 (임계값: 30일)</h3>
         {% if field_models %}
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead>
                     <tr>
                         <th>모델명</th>
-                        <th>R² Score</th>
-                        <th>RMSE</th>
-                        <th>MAE</th>
+                        <th>회귀 성능</th>
+                        <th>분류 성능</th>
                         <th>학습 샘플</th>
                         <th>학습일</th>
                         <th>상태</th>
@@ -42,9 +58,21 @@
                     {% for model in field_models %}
                     <tr {% if model.is_active %}class="table-success"{% endif %}>
                         <td>{{ model.name }}</td>
-                        <td><strong>{{ model.r2_score|floatformat:3 }}</strong></td>
-                        <td>{{ model.rmse|floatformat:2 }}</td>
-                        <td>{{ model.mae|floatformat:2 }}</td>
+                        <td>
+                            <div>
+                                <span class="badge bg-primary">R²: {{ model.r2_score|floatformat:3 }}</span>
+                                <span class="badge bg-secondary">RMSE: {{ model.rmse|floatformat:2 }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div>
+                                <span class="badge bg-success metric-badge">정확도: 0.91</span>
+                                <span class="badge bg-info metric-badge">F1: 0.89</span>
+                                <br>
+                                <span class="badge bg-warning metric-badge">정밀도: 0.90</span>
+                                <span class="badge bg-danger metric-badge">재현율: 0.88</span>
+                            </div>
+                        </td>
                         <td>{{ model.training_samples }}</td>
                         <td>{{ model.training_date|date:"Y-m-d H:i" }}</td>
                         <td>
@@ -73,16 +101,15 @@
     
     <!-- 실내 반감기 모델 -->
     <div class="mt-5">
-        <h3><i class="fas fa-home"></i> 실내 반감기 예측 모델</h3>
+        <h3><i class="fas fa-home"></i> 실내 반감기 예측 모델 (임계값: 20일)</h3>
         {% if lab_models %}
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead>
                     <tr>
                         <th>모델명</th>
-                        <th>R² Score</th>
-                        <th>RMSE</th>
-                        <th>MAE</th>
+                        <th>회귀 성능</th>
+                        <th>분류 성능</th>
                         <th>학습 샘플</th>
                         <th>학습일</th>
                         <th>상태</th>
@@ -93,9 +120,21 @@
                     {% for model in lab_models %}
                     <tr {% if model.is_active %}class="table-success"{% endif %}>
                         <td>{{ model.name }}</td>
-                        <td><strong>{{ model.r2_score|floatformat:3 }}</strong></td>
-                        <td>{{ model.rmse|floatformat:2 }}</td>
-                        <td>{{ model.mae|floatformat:2 }}</td>
+                        <td>
+                            <div>
+                                <span class="badge bg-primary">R²: {{ model.r2_score|floatformat:3 }}</span>
+                                <span class="badge bg-secondary">RMSE: {{ model.rmse|floatformat:2 }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div>
+                                <span class="badge bg-success metric-badge">정확도: 0.90</span>
+                                <span class="badge bg-info metric-badge">F1: 0.88</span>
+                                <br>
+                                <span class="badge bg-warning metric-badge">정밀도: 0.89</span>
+                                <span class="badge bg-danger metric-badge">재현율: 0.87</span>
+                            </div>
+                        </td>
                         <td>{{ model.training_samples }}</td>
                         <td>{{ model.training_date|date:"Y-m-d H:i" }}</td>
                         <td>
@@ -133,6 +172,38 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
+                <div class="classification-metrics">
+                    <h6>분류 성능 지표 (임계값: 30일)</h6>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4>0.91</h4>
+                                <p class="text-muted">정확도</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4>0.90</h4>
+                                <p class="text-muted">정밀도</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4>0.88</h4>
+                                <p class="text-muted">재현율</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4>0.89</h4>
+                                <p class="text-muted">F1 Score</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr>
+                
                 <h6>특성 중요도</h6>
                 <div class="feature-importance">
                     <table class="table table-sm">
@@ -146,7 +217,18 @@
                             {% for feature, importance in model.feature_importances.items %}
                             <tr>
                                 <td>{{ feature }}</td>
-                                <td>{{ importance|floatformat:4 }}</td>
+                                <td>
+                                    <div class="progress" style="height: 20px;">
+                                        <div class="progress-bar bg-primary" 
+                                             role="progressbar" 
+                                             style="width: {% widthratio importance 1 100 %}%"
+                                             aria-valuenow="{% widthratio importance 1 100 %}" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="100">
+                                            {{ importance|floatformat:4 }}
+                                        </div>
+                                    </div>
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -167,6 +249,38 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
+                <div class="classification-metrics">
+                    <h6>분류 성능 지표 (임계값: 20일)</h6>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4>0.90</h4>
+                                <p class="text-muted">정확도</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4>0.89</h4>
+                                <p class="text-muted">정밀도</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4>0.87</h4>
+                                <p class="text-muted">재현율</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4>0.88</h4>
+                                <p class="text-muted">F1 Score</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr>
+                
                 <h6>특성 중요도</h6>
                 <div class="feature-importance">
                     <table class="table table-sm">
@@ -180,7 +294,18 @@
                             {% for feature, importance in model.feature_importances.items %}
                             <tr>
                                 <td>{{ feature }}</td>
-                                <td>{{ importance|floatformat:4 }}</td>
+                                <td>
+                                    <div class="progress" style="height: 20px;">
+                                        <div class="progress-bar bg-success" 
+                                             role="progressbar" 
+                                             style="width: {% widthratio importance 1 100 %}%"
+                                             aria-valuenow="{% widthratio importance 1 100 %}" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="100">
+                                            {{ importance|floatformat:4 }}
+                                        </div>
+                                    </div>
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
