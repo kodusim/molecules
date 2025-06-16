@@ -100,3 +100,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # 정적 파일 압축 설정
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# CSRF 설정
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.cloudtype.app',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'https://port-0-molecules-mbxdy9cec9a21cdf.sel4.cloudtype.app/',
+]
