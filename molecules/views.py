@@ -43,18 +43,19 @@ def dashboard(request):
     
     # Chart.js용 데이터 준비
     # 1. 모델 성능 비교 데이터
-    model_names = []
+    model_types = ['Linear Regression', 'Ridge Regression', 'Lasso Regression', 
+                   'Random Forest', 'Gradient Boosting', 'SVM Regression']
     field_r2_scores = []
     lab_r2_scores = []
     
-    for model in models:
-        if model.target == 'field':
-            model_names.append(model.name)
-            field_r2_scores.append(float(model.r2_score) if model.r2_score else 0)
-        elif model.target == 'lab':
-            if model.name not in model_names:
-                model_names.append(model.name)
-            lab_r2_scores.append(float(model.r2_score) if model.r2_score else 0)
+    for model_type in model_types:
+        # 포장 반감기 모델
+        field_model = models.filter(name=model_type, target='field').first()
+        field_r2_scores.append(float(field_model.r2_score) if field_model and field_model.r2_score else 0)
+        
+        # 실내 반감기 모델
+        lab_model = models.filter(name=model_type, target='lab').first()
+        lab_r2_scores.append(float(lab_model.r2_score) if lab_model and lab_model.r2_score else 0)
     
     # 2. 특성 중요도 데이터 (최고 성능 모델)
     best_model = models.order_by('-r2_score').first()
@@ -73,6 +74,11 @@ def dashboard(request):
             feature_importance_labels.append(feature)
             feature_importance_values.append(float(importance))
     
+    # 데이터가 없을 경우 기본값 설정
+    if not feature_importance_labels:
+        feature_importance_labels = ['No data']
+        feature_importance_values = [0]
+    
     # 3. 계통별 통계 데이터
     system_names = []
     system_counts = []
@@ -81,11 +87,16 @@ def dashboard(request):
         system_names.append(stat['system'] or '미분류')
         system_counts.append(stat['count'])
     
+    # 데이터가 없을 경우 기본값 설정
+    if not system_names:
+        system_names = ['No data']
+        system_counts = [0]
+    
     context = {
         'models': models,
         'system_stats': system_stats,
         # Chart.js 데이터
-        'model_names': json.dumps(model_names),
+        'model_names': json.dumps(model_types),
         'field_r2_scores': json.dumps(field_r2_scores),
         'lab_r2_scores': json.dumps(lab_r2_scores),
         'feature_importance_labels': json.dumps(feature_importance_labels),

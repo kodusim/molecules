@@ -22,4 +22,8 @@ urlpatterns = [
     path('models/training/', views.model_training, name='model_training'),
     path('models/train/', views.train_model, name='train_model'),
     path('models/', views.model_list, name='model_list'),
+    
+    # 예측 관련
+    path('predict/', views.predict, name='predict'),
+    path('predictions/', views.prediction_history, name='prediction_history'),
 ]
