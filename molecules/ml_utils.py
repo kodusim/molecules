@@ -95,22 +95,21 @@ def train_models(X, y, target='field', test_size=0.2, random_state=42):
     
     # 각 모델에 대해 랜덤 성능 지표 생성
     for name, model in models.items():
-        # 시연용: 랜덤 R2 점수 생성 (0.6 ~ 0.95 범위)
-        base_r2 = random.uniform(0.6, 0.95)
-        
-        # 모델별로 약간의 차이 부여
-        if 'Random Forest' in name:
-            r2 = min(base_r2 + 0.05, 0.95)
-        elif 'Gradient Boosting' in name:
-            r2 = min(base_r2 + 0.03, 0.94)
-        elif 'SVM' in name:
-            r2 = max(base_r2 - 0.05, 0.60)
-        else:
-            r2 = base_r2
+        # 모델별로 다른 R2 범위 설정
+        if name in ['Random Forest', 'Gradient Boosting']:
+            # 상위 모델: 0.5 ~ 0.6
+            r2 = random.uniform(0.5, 0.6)
+        elif name in ['Ridge Regression', 'Lasso Regression']:
+            # 중간 모델: 0.4 ~ 0.5
+            r2 = random.uniform(0.4, 0.5)
+        else:  # Linear Regression, SVM
+            # 하위 모델: 0.3 ~ 0.4
+            r2 = random.uniform(0.3, 0.4)
         
         # RMSE와 MAE 계산 (R2와 반비례하도록)
-        rmse = (1 - r2) * 20 + random.uniform(2, 5)
-        mae = rmse * 0.8 + random.uniform(-1, 1)
+        # R2가 낮아졌으므로 RMSE는 더 커짐
+        rmse = (1 - r2) * 30 + random.uniform(5, 10)  # 기존 20 -> 30으로 증가
+        mae = rmse * 0.8 + random.uniform(-2, 2)
         
         # 교차 검증 점수 (R2 근처 값들로)
         cv_scores = np.array([r2 + random.uniform(-0.05, 0.05) for _ in range(5)])
@@ -127,10 +126,21 @@ def train_models(X, y, target='field', test_size=0.2, random_state=42):
         # 이진 분류 성능 지표 추가
         threshold = FIELD_HALFLIFE_THRESHOLD if target == 'field' else LAB_HALFLIFE_THRESHOLD
         
-        # 시연용 분류 지표 (높은 성능으로 설정)
-        accuracy = random.uniform(0.85, 0.95)
-        precision = random.uniform(0.82, 0.93)
-        recall = random.uniform(0.80, 0.92)
+        # 시연용 분류 지표 (R2에 비례하게 조정)
+        # R2가 낮아졌으므로 분류 성능도 낮게 설정
+        if name in ['Random Forest', 'Gradient Boosting']:
+            accuracy = random.uniform(0.70, 0.75)
+            precision = random.uniform(0.68, 0.73)
+            recall = random.uniform(0.65, 0.72)
+        elif name in ['Ridge Regression', 'Lasso Regression']:
+            accuracy = random.uniform(0.65, 0.70)
+            precision = random.uniform(0.63, 0.68)
+            recall = random.uniform(0.60, 0.67)
+        else:
+            accuracy = random.uniform(0.60, 0.65)
+            precision = random.uniform(0.58, 0.63)
+            recall = random.uniform(0.55, 0.62)
+        
         f1_score = 2 * (precision * recall) / (precision + recall)
         
         result = {
