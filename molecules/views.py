@@ -399,7 +399,13 @@ def predict(request):
             field_models = MLModel.objects.filter(target='field', is_active=True).order_by('-r2_score')
             for model in field_models[:3]:  # 상위 3개 모델
                 try:
-                    model_data = load_model(model.model_file.path)
+                    # 모델 파일 경로 수정
+                    model_file_path = os.path.join(settings.MEDIA_ROOT, str(model.model_file))
+                    if not os.path.exists(model_file_path):
+                        print(f"모델 파일을 찾을 수 없습니다: {model_file_path}")
+                        continue
+                        
+                    model_data = load_model(model_file_path)
                     result = predict_halflife(model_data, compound)
                     
                     # 여러 임계값에 대한 분류 결과 추가
@@ -425,6 +431,89 @@ def predict(request):
                     })
                 except Exception as e:
                     print(f"예측 오류 ({model.name}): {e}")
+                    import traceback
+                    traceback.print_exc()
             
             # 실내 반감기 예측
             lab_models = MLModel.objects.filter(target='lab', is_active=True).order_by('-r2_score')
+            for model in lab_models[:3]:  # 상위 3개 모델
+                try:
+                    # 모델 파일 경로 수정
+                    model_file_path = os.path.join(settings.MEDIA_ROOT, str(model.model_file))
+                    if not os.path.exists(model_file_path):
+                        print(f"모델 파일을 찾을 수 없습니다: {model_file_path}")
+                        continue
+                        
+                    model_data = load_model(model_file_path)
+                    result = predict_halflife(model_data, compound)
+                    
+                    # 여러 임계값에 대한 분류 결과 추가
+                    classification_results = {}
+                    for threshold in thresholds:
+                        is_persistent = result['predicted_value'] >= threshold
+                        # 예측값과 임계값의 차이에 따라 확률 조정
+                        diff = abs(result['predicted_value'] - threshold)
+                        base_prob = 70 + min(25, diff * 0.5)  # 70~95% 범위
+                        
+                        classification_results[f'threshold_{threshold}'] = {
+                            'threshold': threshold,
+                            'is_persistent': is_persistent,
+                            'persistence_probability': int(base_prob if is_persistent else (100 - base_prob))
+                        }
+                    
+                    result['classification_results'] = classification_results
+                    
+                    predictions.append({
+                        'model': model,
+                        'target': 'lab',
+                        'prediction': result
+                    })
+                except Exception as e:
+                    print(f"예측 오류 ({model.name}): {e}")
+                    import traceback
+                    traceback.print_exc()
+            
+            # 예측 결과가 있으면 저장 옵션 제공
+            if predictions and request.POST.get('save_prediction'):
+                # 화합물 저장
+                saved_compound, created = Compound.objects.get_or_create(
+                    smiles=compound.smiles,
+                    defaults={
+                        'name': compound.name,
+                        'system': compound.system,
+                        'molecular_weight': compound.molecular_weight,
+                        'logp': compound.logp,
+                        'tpsa': compound.tpsa,
+                        'num_h_donors': compound.num_h_donors,
+                        'num_h_acceptors': compound.num_h_acceptors,
+                        'num_rotatable_bonds': compound.num_rotatable_bonds,
+                        'num_aromatic_rings': compound.num_aromatic_rings,
+                        'num_heavy_atoms': compound.num_heavy_atoms,
+                    }
+                )
+                
+                # 예측 결과 저장
+                for pred in predictions:
+                    Prediction.objects.create(
+                        compound=saved_compound,
+                        model=pred['model'],
+                        predicted_value=pred['prediction']['predicted_value'],
+                        confidence_lower=pred['prediction']['confidence_lower'],
+                        confidence_upper=pred['prediction']['confidence_upper'],
+                        input_features=pred['prediction']['input_features']
+                    )
+                
+                messages.success(request, '예측 결과가 저장되었습니다.')
+                return redirect('molecules:compound_detail', pk=saved_compound.id)
+        else:
+            messages.error(request, '유효하지 않은 SMILES 문자열입니다.')
+    
+    context = {
+        'form': form,
+        'predictions': predictions,
+        'compound': compound,
+        'field_threshold': FIELD_HALFLIFE_THRESHOLD,
+        'lab_threshold': LAB_HALFLIFE_THRESHOLD,
+    }
+    
+    return render(request, 'molecules/predict.html', context)
