@@ -206,8 +206,12 @@ def predict_halflife(model_data, compound):
     """
     시연용 반감기 예측 - 랜덤 값 생성
     """
+    # model_data가 딕셔너리가 아닌 경우 처리
+    if not isinstance(model_data, dict):
+        model_data = {'target': 'field', 'model_type': 'Unknown'}
+    
     # 기본 반감기 범위 설정
-    if model_data['target'] == 'field':
+    if model_data.get('target') == 'field':
         base_halflife = random.uniform(10, 60)  # 포장 반감기: 10-60일
         threshold = FIELD_HALFLIFE_THRESHOLD
     else:
